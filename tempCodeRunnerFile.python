@@ -1,0 +1,75 @@
+import random
+
+def get_weight():
+    return random.uniform(-0.5, 0.5)
+
+def exponential(x, terms=20):
+    result = 1.0
+    term = 1.0
+    for n in range(1, terms):
+        term *= x / n
+        result += term
+    return result
+
+def tanh(x):
+    if x > 100:  
+        return 1.0
+    elif x < -100:  
+        return -1.0
+    e_2x = exponential(2 * x) 
+    return (e_2x - 1) / (e_2x + 1)
+
+def tanh_derivative(x):
+    return 1 - tanh(x) ** 2
+
+def forward(inputs, weights, biases):
+    h1_net = inputs[0] * weights[0] + inputs[1] * weights[1] + biases[0]
+    h2_net = inputs[0] * weights[2] + inputs[1] * weights[3] + biases[0]
+    h1 = tanh(h1_net)
+    h2 = tanh(h2_net)
+    
+    o1_net = h1 * weights[4] + h2 * weights[5] + biases[1]
+    o2_net = h1 * weights[6] + h2 * weights[7] + biases[1]
+    o1 = tanh(o1_net)
+    o2 = tanh(o2_net)
+    
+    return h1, h2, o1, o2, h1_net, h2_net, o1_net, o2_net
+
+def backward(inputs, weights, biases, target, learning_rate=0.01):
+    h1, h2, o1, o2, h1_net, h2_net, o1_net, o2_net = forward(inputs, weights, biases)
+    
+    error_o1 = o1 - target[0]
+    error_o2 = o2 - target[1]
+    
+    delta_o1 = error_o1 * tanh_derivative(o1_net)
+    delta_o2 = error_o2 * tanh_derivative(o2_net)
+    
+    delta_h1 = (delta_o1 * weights[4] + delta_o2 * weights[6]) * tanh_derivative(h1_net)
+    delta_h2 = (delta_o1 * weights[5] + delta_o2 * weights[7]) * tanh_derivative(h2_net)
+    
+    weights[0] -= learning_rate * delta_h1 * inputs[0]
+    weights[1] -= learning_rate * delta_h1 * inputs[1]
+    weights[2] -= learning_rate * delta_h2 * inputs[0]
+    weights[3] -= learning_rate * delta_h2 * inputs[1]
+    
+    weights[4] -= learning_rate * delta_o1 * h1
+    weights[5] -= learning_rate * delta_o1 * h2
+    weights[6] -= learning_rate * delta_o2 * h1
+    weights[7] -= learning_rate * delta_o2 * h2
+    
+    biases[0] -= learning_rate * (delta_h1 + delta_h2)
+    biases[1] -= learning_rate * (delta_o1 + delta_o2)
+    
+    return weights, biases
+
+inputs = [0.5, 0.10]
+biases = [0.5, 0.7]
+weights = [get_weight() for _ in range(8)]
+targets = [0.3, -0.2]  
+
+for _ in range(1000):
+    weights, biases = backward(inputs, weights, biases, targets)
+
+# Test final output
+output = forward(inputs, weights, biases)
+print("Final Output:", output[2], output[3])
